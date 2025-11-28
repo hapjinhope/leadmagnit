@@ -31,6 +31,11 @@ function App() {
   const [newKeyword, setNewKeyword] = useState('')
   const [loadingData, setLoadingData] = useState(false)
 
+  const handleAuth = useCallback((tgUser) => {
+    setUser(tgUser)
+    setView(views.menu)
+  }, [])
+
   useEffect(() => {
     const webApp = window.Telegram?.WebApp
     const tgUser = webApp?.initDataUnsafe?.user
@@ -122,11 +127,6 @@ function App() {
     const term = search.toLowerCase()
     return filteredGroups.filter((g) => g.title.toLowerCase().includes(term))
   }, [filteredGroups, search])
-
-  const handleAuth = useCallback((tgUser) => {
-    setUser(tgUser)
-    setView(views.menu)
-  }, [])
 
   const handleMockAuth = () => {
     handleAuth({

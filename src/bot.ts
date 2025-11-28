@@ -1,11 +1,28 @@
 import { Bot, InlineKeyboard, Context } from "grammy";
 import { config } from "./config";
-import { getAll, upsertUser, updatePhone } from "./leadSettingsRepo";
+import {
+  getAll,
+  upsertUser,
+  updatePhone,
+  updateGroups,
+  updateKeywords,
+} from "./leadSettingsRepo";
 
 function buildWebAppKeyboard() {
   if (!config.webappBaseUrl) return null;
   const keyboard = new InlineKeyboard().webApp("Открыть приложение", config.webappBaseUrl);
   return { reply_markup: keyboard };
+}
+
+const knownGroups = new Set<string>();
+
+async function hydrateKnownGroups() {
+  try {
+    const users = await getAll();
+    users.forEach((u) => u.groups.forEach((g) => knownGroups.add(g)));
+  } catch (err) {
+    console.warn("Failed to hydrate known groups", err);
+  }
 }
 
 async function handleStart(ctx: Context) {
@@ -31,6 +48,10 @@ async function handleStart(ctx: Context) {
   } else {
     await ctx.reply("Вы авторизованы. WebApp URL не настроен.");
   }
+
+  await ctx.reply(
+    "Управление без WebApp:\n/groups — показать выбранные\n/setgroups <id1,id2> — задать группы\n/keywords — показать ключевые\n/setkeywords <слова через запятую> — задать ключи"
+  );
 }
 
 async function handleContact(ctx: Context) {
@@ -58,6 +79,7 @@ async function handleGroupMessage(bot: Bot, ctx: Context) {
   if (ctx.chat.type !== "group" && ctx.chat.type !== "supergroup") return;
 
   const chatId = ctx.chat.id.toString();
+  knownGroups.add(chatId);
 
   const text = ("text" in ctx.message ? ctx.message.text : undefined) ||
     ("caption" in ctx.message ? ctx.message.caption : undefined) ||
@@ -89,6 +111,68 @@ export function createBot() {
 
   bot.catch((err) => {
     console.error("Bot error", err.error || err);
+  });
+
+  hydrateKnownGroups();
+
+  bot.command("groups", async (ctx) => {
+    const telegramId = ctx.from?.id?.toString();
+    if (!telegramId) return;
+    const user = await upsertUser(telegramId);
+    const allUsers = await getAll();
+    allUsers.forEach((u) => u.groups.forEach((g) => knownGroups.add(g)));
+    const available = Array.from(knownGroups);
+    const current = user.groups;
+    await ctx.reply(
+      `Текущие группы: ${current.length ? current.join(", ") : "нет"}\nДоступные: ${
+        available.length ? available.join(", ") : "пока нет"
+      }\nЗадайте группы: /setgroups id1,id2`
+    );
+  });
+
+  bot.command("setgroups", async (ctx) => {
+    const telegramId = ctx.from?.id?.toString();
+    if (!telegramId) return;
+    const text = ctx.message?.text || "";
+    const payload = text.split(/\s+/).slice(1).join(" ");
+    const groups = payload
+      .split(",")
+      .map((g) => g.trim())
+      .filter(Boolean);
+    if (!groups.length) {
+      await ctx.reply("Укажите chat_id через запятую: /setgroups -1001,-1002");
+      return;
+    }
+    await updateGroups(telegramId, groups);
+    const user = await upsertUser(telegramId);
+    await ctx.reply(`Группы сохранены: ${user.groups.join(", ")}`);
+  });
+
+  bot.command("keywords", async (ctx) => {
+    const telegramId = ctx.from?.id?.toString();
+    if (!telegramId) return;
+    const user = await upsertUser(telegramId);
+    await ctx.reply(
+      `Текущие ключевые слова: ${user.keywords.length ? user.keywords.join(", ") : "нет"}\nЗадайте: /setkeywords слово1,слово2`
+    );
+  });
+
+  bot.command("setkeywords", async (ctx) => {
+    const telegramId = ctx.from?.id?.toString();
+    if (!telegramId) return;
+    const text = ctx.message?.text || "";
+    const payload = text.split(/\s+/).slice(1).join(" ");
+    const keywords = payload
+      .split(",")
+      .map((w) => w.trim().toLowerCase())
+      .filter(Boolean);
+    if (!keywords.length) {
+      await ctx.reply("Укажите ключевые слова через запятую: /setkeywords аренда,куплю");
+      return;
+    }
+    await updateKeywords(telegramId, keywords);
+    const user = await upsertUser(telegramId);
+    await ctx.reply(`Ключевые слова сохранены: ${user.keywords.join(", ")}`);
   });
 
   bot.command("start", (ctx) => handleStart(ctx));

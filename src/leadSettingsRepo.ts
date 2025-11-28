@@ -36,7 +36,11 @@ export async function upsertUser(
 ): Promise<LeadSettings> {
   const payload: Record<string, any> = { telegram_id: telegramId };
   if (phone) payload.phone = phone;
-  const { data, error } = await supabase.from("lead_settings").upsert(payload).select().single();
+  const { data, error } = await supabase
+    .from("lead_settings")
+    .upsert(payload, { onConflict: "telegram_id" })
+    .select()
+    .single();
   if (error) throw error;
   return mapRow(data);
 }

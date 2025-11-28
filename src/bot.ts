@@ -87,6 +87,10 @@ async function handleGroupMessage(bot: Bot, ctx: Context) {
 export function createBot() {
   const bot = new Bot(config.botToken);
 
+  bot.catch((err) => {
+    console.error("Bot error", err.error || err);
+  });
+
   bot.command("start", (ctx) => handleStart(ctx));
   bot.command("app", (ctx) => {
     const keyboard = buildWebAppKeyboard();

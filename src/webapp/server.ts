@@ -23,6 +23,7 @@ export function createWebAppServer() {
 
   app.use(express.json());
   app.use("/webapp", express.static(path.join(process.cwd(), "public/webapp")));
+  app.get("/", (_req, res) => res.redirect("/webapp/"));
 
   app.use("/api", async (req, res, next) => {
     const initData = req.header("x-telegram-init-data");

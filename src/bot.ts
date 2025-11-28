@@ -1,12 +1,9 @@
 import { Bot, InlineKeyboard, Context } from "grammy";
 import { config } from "./config";
-import {
-  getAll,
-  upsertUser,
-  updatePhone,
-} from "./leadSettingsRepo";
+import { getAll, upsertUser, updatePhone } from "./leadSettingsRepo";
 
 function buildWebAppKeyboard() {
+  if (!config.webappBaseUrl) return null;
   const keyboard = new InlineKeyboard().webApp("Открыть приложение", config.webappBaseUrl);
   return { reply_markup: keyboard };
 }
@@ -28,10 +25,12 @@ async function handleStart(ctx: Context) {
     return;
   }
 
-  await ctx.reply(
-    "Вы авторизованы. Нажмите кнопку, чтобы открыть приложение.",
-    buildWebAppKeyboard()
-  );
+  const keyboard = buildWebAppKeyboard();
+  if (keyboard) {
+    await ctx.reply("Вы авторизованы. Нажмите кнопку, чтобы открыть приложение.", keyboard);
+  } else {
+    await ctx.reply("Вы авторизованы. WebApp URL не настроен.");
+  }
 }
 
 async function handleContact(ctx: Context) {
@@ -41,10 +40,12 @@ async function handleContact(ctx: Context) {
   if (!telegramId || !contact?.phone_number) return;
 
   await updatePhone(telegramId, contact.phone_number);
-  await ctx.reply(
-    "Авторизация прошла. Нажмите кнопку, чтобы открыть приложение.",
-    buildWebAppKeyboard()
-  );
+  const keyboard = buildWebAppKeyboard();
+  if (keyboard) {
+    await ctx.reply("Авторизация прошла. Нажмите кнопку, чтобы открыть приложение.", keyboard);
+  } else {
+    await ctx.reply("Авторизация прошла. WebApp URL не настроен.");
+  }
 }
 
 function messageMatches(text: string, keywords: string[]): boolean {
@@ -57,7 +58,6 @@ async function handleGroupMessage(bot: Bot, ctx: Context) {
   if (ctx.chat.type !== "group" && ctx.chat.type !== "supergroup") return;
 
   const chatId = ctx.chat.id.toString();
-  if (!config.monitoredGroups.includes(chatId)) return;
 
   const text = ("text" in ctx.message ? ctx.message.text : undefined) ||
     ("caption" in ctx.message ? ctx.message.caption : undefined) ||
@@ -88,7 +88,11 @@ export function createBot() {
   const bot = new Bot(config.botToken);
 
   bot.command("start", (ctx) => handleStart(ctx));
-  bot.command("app", (ctx) => ctx.reply("Открыть приложение", buildWebAppKeyboard()));
+  bot.command("app", (ctx) => {
+    const keyboard = buildWebAppKeyboard();
+    if (keyboard) return ctx.reply("Открыть приложение", keyboard);
+    return ctx.reply("WebApp URL не настроен.");
+  });
   bot.on("message:contact", (ctx) => handleContact(ctx));
   bot.on("message", (ctx) => handleGroupMessage(bot, ctx));
 

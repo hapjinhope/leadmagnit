@@ -4,6 +4,7 @@ import { verifyInitData } from "./auth";
 import { config } from "../config";
 import {
   getByTelegramId,
+  getAll,
   upsertUser,
   updateGroups,
   updateKeywords,
@@ -15,10 +16,6 @@ declare global {
       userTelegramId?: string;
     }
   }
-}
-
-function parseAvailableGroups() {
-  return config.monitoredGroups.map((id) => ({ id, title: `Группа ${id}` }));
 }
 
 export function createWebAppServer() {
@@ -47,8 +44,16 @@ export function createWebAppServer() {
     res.json({ groups: settings.groups, keywords: settings.keywords });
   });
 
-  app.get("/api/groups/available", (_req, res) => {
-    const groups = parseAvailableGroups();
+  app.get("/api/groups/available", async (req, res) => {
+    const all = await getAll();
+    const telegramId = req.userTelegramId as string;
+    const user = all.find((u) => u.telegramId === telegramId);
+
+    const unique = new Set<string>();
+    all.forEach((u) => u.groups.forEach((g) => unique.add(g)));
+    (user?.groups || []).forEach((g) => unique.add(g));
+
+    const groups = Array.from(unique).map((id) => ({ id, title: `Группа ${id}` }));
     res.json({ groups });
   });
 

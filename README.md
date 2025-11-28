@@ -13,6 +13,7 @@ npm run dev
 ## Переменные окружения
 
 - `VITE_TELEGRAM_BOT` — username бота для Telegram Login Widget (пример: `my_bot`).
+- `VITE_SUPABASE_URL` и `VITE_SUPABASE_ANON_KEY` — если хотите сохранять выбранные группы и ключевые слова в Supabase. Без них данные держатся только в сессии.
 
 ## Деплой на Railway (статический preview)
 
@@ -27,3 +28,4 @@ npm run dev
 - `src/components/TelegramLogin.jsx` — обёртка над Telegram Login Widget.
 - `src/App.jsx` — навигация по экранам: авторизация → меню → группы/каналы → ключевые слова.
 - Данные групп сейчас заглушечные (`mockGroups`). Подключите вызов к Telegram API (TDLib/MTProto) после получения данных авторизации, чтобы подменить реальные подписки.
+- Supabase (опционально): добавьте таблицы `groups` (id, user_id, title, type, members, unread, selected, created_at) и `keywords` (id, user_id, value, created_at). Тогда выбор групп и слова будут сохраняться в облаке.

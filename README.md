@@ -1,31 +1,35 @@
-# Мини-апп с входом через Telegram
+# Telegram Lead Monitor
 
-Простое SPA: вход через Telegram, затем меню с двумя разделами – список групп/каналов и пустой экран для ключевых слов.
+Лид-магнит: Telegram-бот + WebApp для выбора групп и ключевых слов, с уведомлениями о совпадениях.
+
+## Установка
+1. Установите зависимости:
+   ```bash
+   npm install
+   ```
+
+## Настройка
+1. Скопируйте пример окружения и заполните значения:
+   ```bash
+   cp .env.example .env
+   ```
+2. Укажите:
+   - `TELEGRAM_BOT_TOKEN` — токен бота.
+- `WEBAPP_BASE_URL` — публичный URL для мини-приложения (`https://example.com/webapp/`).
+- `MONITORED_GROUPS` — ID групп/чатов через запятую (`-100123,-100987`).
+- `ALERT_TARGET_MODE` — `user` или `fixed`.
+- `ALERT_FIXED_CHAT_ID` — ID чата для режима `fixed`.
+- `PORT` — порт Express (по умолчанию 3000).
+- Supabase: `SUPABASE_URL` + `SUPABASE_KEY` (publishable или service; для записи лучше service-role). Пример URL: `https://<project>.supabase.co`.
 
 ## Запуск
-
 ```bash
-npm install
-cp .env.example .env # впишите имя бота без @
-npm run dev
+npm run build
+npm start
 ```
 
-## Переменные окружения
-
-- `VITE_TELEGRAM_BOT` — username бота для Telegram Login Widget (пример: `my_bot`).
-- `VITE_SUPABASE_URL` и `VITE_SUPABASE_ANON_KEY` — если хотите сохранять выбранные группы и ключевые слова в Supabase. Без них данные держатся только в сессии.
-
-## Деплой на Railway (статический preview)
-
-1. Залогиньтесь в Railway и создайте новый проект из этого репо.  
-2. В Variables добавьте `VITE_TELEGRAM_BOT=happrembot` (или своё имя бота).  
-3. В Settings → Deploy указать: Build command `npm run build`, Start command `npm run start`.  
-4. После деплоя возьмите выданный домен и пропишите его боту в BotFather → Bot Settings → Web Login.  
-5. Откройте домен — виджет авторизации должен работать без ошибки Bot domain invalid.
-
-## Как устроено
-
-- `src/components/TelegramLogin.jsx` — обёртка над Telegram Login Widget.
-- `src/App.jsx` — навигация по экранам: авторизация → меню → группы/каналы → ключевые слова.
-- Данные групп сейчас заглушечные (`mockGroups`). Подключите вызов к Telegram API (TDLib/MTProto) после получения данных авторизации, чтобы подменить реальные подписки.
-- Supabase (опционально): добавьте таблицы `groups` (id, user_id, title, type, members, unread, selected, created_at) и `keywords` (id, user_id, value, created_at). Тогда выбор групп и слова будут сохраняться в облаке.
+## Как использовать
+- Добавьте бота в группы, указанные в `MONITORED_GROUPS`.
+- В личном чате с ботом выполните `/start`, отправьте номер телефона, нажмите «Открыть приложение».
+- В WebApp отметьте группы из списка доступных и добавьте ключевые слова.
+- Бот будет отслеживать сообщения в выбранных группах и слать уведомления при совпадении по ключевым словам (пользователю или в фиксированный чат, в зависимости от настроек).

@@ -126,7 +126,7 @@ export function createBot() {
     await ctx.reply(
       `Текущие группы: ${current.length ? current.join(", ") : "нет"}\nДоступные: ${
         available.length ? available.join(", ") : "пока нет"
-      }\nЗадайте группы: /setgroups id1,id2`
+      }\nЗадайте группы: /setgroups id1,id2\nДобавить из группы: напишите /savegroup внутри нужной группы`
     );
   });
 
@@ -146,6 +146,32 @@ export function createBot() {
     await updateGroups(telegramId, groups);
     const user = await upsertUser(telegramId);
     await ctx.reply(`Группы сохранены: ${user.groups.join(", ")}`);
+  });
+
+  bot.command("groupid", async (ctx) => {
+    if (!ctx.chat || (ctx.chat.type !== "group" && ctx.chat.type !== "supergroup")) {
+      await ctx.reply("Выполните /groupid внутри группы, чтобы получить ее chat_id.");
+      return;
+    }
+    const chatId = ctx.chat.id.toString();
+    const title = ctx.chat.title || chatId;
+    knownGroups.add(chatId);
+    await ctx.reply(`Chat ID: ${chatId}\nНазвание: ${title}`);
+  });
+
+  bot.command("savegroup", async (ctx) => {
+    if (!ctx.chat || (ctx.chat.type !== "group" && ctx.chat.type !== "supergroup")) {
+      await ctx.reply("Выполните /savegroup внутри группы, чтобы добавить ее.");
+      return;
+    }
+    const telegramId = ctx.from?.id?.toString();
+    if (!telegramId) return;
+    const chatId = ctx.chat.id.toString();
+    knownGroups.add(chatId);
+    const user = await upsertUser(telegramId);
+    const updated = Array.from(new Set([...user.groups, chatId]));
+    await updateGroups(telegramId, updated);
+    await ctx.reply(`Группа ${chatId} добавлена. Текущие: ${updated.join(", ")}`);
   });
 
   bot.command("keywords", async (ctx) => {

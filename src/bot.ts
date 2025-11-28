@@ -74,12 +74,10 @@ async function handleGroupMessage(bot: Bot, ctx: Context) {
 
     const alertText = `Найдено совпадение в чате ${chatTitle}:\n\n${text}`;
 
+    const targetChat = config.alertFixedChatId || user.telegramId;
+
     try {
-      if (config.alertTargetMode === "user") {
-        await bot.api.sendMessage(user.telegramId, alertText);
-      } else if (config.alertFixedChatId) {
-        await bot.api.sendMessage(config.alertFixedChatId, `${alertText}\n\nПользователь: ${user.telegramId}`);
-      }
+      await bot.api.sendMessage(targetChat, alertText);
     } catch (err) {
       console.error("Failed to send alert", err);
     }

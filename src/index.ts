@@ -9,6 +9,11 @@ async function bootstrap() {
   });
 
   const bot = createBot();
+  try {
+    await bot.api.deleteWebhook({ drop_pending_updates: true });
+  } catch (err) {
+    console.warn("Failed to delete webhook before start", err);
+  }
   bot.start();
   console.log(`Bot started`);
 }

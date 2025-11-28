@@ -28,11 +28,12 @@ export function createWebAppServer() {
   app.use("/api", async (req, res, next) => {
     const initData = req.header("x-telegram-init-data");
     if (!initData) {
-      return res.status(401).json({ error: "unauthorized" });
+      return res.status(401).json({ error: "unauthorized", reason: "no_init_data" });
     }
     const verified = verifyInitData(initData, config.botToken);
     if (!verified) {
-      return res.status(401).json({ error: "unauthorized" });
+      console.warn("Unauthorized initData", { initDataSnippet: initData.slice(0, 120) });
+      return res.status(401).json({ error: "unauthorized", reason: "bad_signature" });
     }
     req.userTelegramId = verified.telegramId;
     await upsertUser(verified.telegramId);

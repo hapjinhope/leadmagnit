@@ -15,6 +15,7 @@ function buildWebAppKeyboard() {
 }
 
 const knownGroups = new Set<string>(config.allowedGroups || []);
+const selectionCache = new Map<string, Set<string>>();
 
 async function hydrateKnownGroups() {
   try {
@@ -72,6 +73,22 @@ async function handleContact(ctx: Context) {
 function messageMatches(text: string, keywords: string[]): boolean {
   const lower = text.toLowerCase();
   return keywords.some((k) => lower.includes(k.toLowerCase()));
+}
+
+function getAvailableGroups(): string[] {
+  if (config.allowedGroups && config.allowedGroups.length) return [...config.allowedGroups];
+  return Array.from(knownGroups);
+}
+
+function buildGroupsKeyboard(selected: Set<string>, available: string[]) {
+  const kb = new InlineKeyboard();
+  available.forEach((g, idx) => {
+    const isOn = selected.has(g);
+    kb.text(`${isOn ? "✅" : "⬜️"} ${g}`, `toggle_g:${g}`);
+    if (idx % 2 === 1) kb.row();
+  });
+  kb.row().text("Сохранить", "save_groups");
+  return kb;
 }
 
 async function handleGroupMessage(bot: Bot, ctx: Context) {
@@ -157,6 +174,61 @@ export function createBot() {
     await updateGroups(telegramId, groups);
     const user = await upsertUser(telegramId);
     await ctx.reply(`Группы сохранены: ${user.groups.join(", ")}`);
+  });
+
+  bot.command("choosegroups", async (ctx) => {
+    const telegramId = ctx.from?.id?.toString();
+    if (!telegramId) return;
+    const user = await upsertUser(telegramId);
+    const available = getAvailableGroups();
+    if (!available.length) {
+      await ctx.reply("Нет доступных групп. Добавьте в MONITORED_GROUPS или сохраните через /savegroup.");
+      return;
+    }
+    const selected = new Set<string>(user.groups);
+    selectionCache.set(telegramId, selected);
+    const kb = buildGroupsKeyboard(selected, available);
+    await ctx.reply(
+      `Выберите группы (тапайте для переключения), потом нажмите Сохранить.\nТекущие: ${
+        user.groups.length ? user.groups.join(", ") : "нет"
+      }`,
+      { reply_markup: kb }
+    );
+  });
+
+  bot.on("callback_query:data", async (ctx) => {
+    const telegramId = ctx.from?.id?.toString();
+    if (!telegramId) return;
+    const data = ctx.callbackQuery.data;
+    if (data.startsWith("toggle_g:")) {
+      const groupId = data.replace("toggle_g:", "");
+      const available = getAvailableGroups();
+      if (!available.includes(groupId)) {
+        await ctx.answerCallbackQuery({ text: "Эта группа недоступна", show_alert: true });
+        return;
+      }
+      const selection = selectionCache.get(telegramId) ?? new Set<string>();
+      if (selection.has(groupId)) selection.delete(groupId);
+      else selection.add(groupId);
+      selectionCache.set(telegramId, selection);
+      const kb = buildGroupsKeyboard(selection, available);
+      await ctx.editMessageText(
+        `Выберите группы (тапайте для переключения), потом нажмите Сохранить.\nТекущие: ${
+          selection.size ? Array.from(selection).join(", ") : "нет"
+        }`,
+        { reply_markup: kb }
+      );
+      await ctx.answerCallbackQuery();
+      return;
+    }
+    if (data === "save_groups") {
+      const selection = selectionCache.get(telegramId) ?? new Set<string>();
+      await updateGroups(telegramId, Array.from(selection));
+      const user = await upsertUser(telegramId);
+      await ctx.editMessageText(`Группы сохранены: ${user.groups.join(", ") || "нет"}`);
+      await ctx.answerCallbackQuery({ text: "Сохранено" });
+      return;
+    }
   });
 
   bot.command("groupid", async (ctx) => {

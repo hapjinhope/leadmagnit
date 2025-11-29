@@ -16,6 +16,7 @@
 2. Укажите:
 - `TELEGRAM_BOT_TOKEN` — токен бота.
 - `WEBAPP_BASE_URL` — опционально, публичный URL для мини-приложения (`https://example.com/webapp/`). Если не задан, кнопка WebApp не работает.
+- `MONITORED_GROUPS` — опционально: список доступных chat_id через запятую. Если задан, выбирать можно только из них.
 - `ALERT_FIXED_CHAT_ID` — если указано, алерты слать всегда в этот чат; если пусто — слать пользователю.
 - `PORT` — порт Express (по умолчанию 3000).
 - Supabase: `SUPABASE_URL` + `SUPABASE_KEY` (publishable или service; для записи лучше service-role). Пример URL: `https://<project>.supabase.co`.

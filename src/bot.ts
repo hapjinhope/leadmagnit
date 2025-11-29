@@ -14,7 +14,7 @@ function buildWebAppKeyboard() {
   return { reply_markup: keyboard };
 }
 
-const knownGroups = new Set<string>();
+const knownGroups = new Set<string>(config.allowedGroups || []);
 
 async function hydrateKnownGroups() {
   try {
@@ -142,6 +142,17 @@ export function createBot() {
     if (!groups.length) {
       await ctx.reply("Укажите chat_id через запятую: /setgroups -1001,-1002");
       return;
+    }
+    if (config.allowedGroups && config.allowedGroups.length) {
+      const invalid = groups.filter((g) => !config.allowedGroups.includes(g));
+      if (invalid.length) {
+        await ctx.reply(
+          `Некорректные chat_id: ${invalid.join(", ")}. Доступные: ${config.allowedGroups.join(
+            ", "
+          )}`
+        );
+        return;
+      }
     }
     await updateGroups(telegramId, groups);
     const user = await upsertUser(telegramId);

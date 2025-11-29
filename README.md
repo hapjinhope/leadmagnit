@@ -27,6 +27,13 @@ npm run build
 npm start
 ```
 
+## Получить список групп аккаунта (CLI, Telethon)
+```bash
+pip install telethon
+python scripts/list_groups.py  # введите api_id, api_hash и телефон аккаунта
+```
+Скрипт выведет `chat_id    title` для всех групп/супергрупп — их можно вставить в `MONITORED_GROUPS` или задать через команды бота.
+
 ## Как использовать
 - Добавьте бота в группы, указанные в `MONITORED_GROUPS`.
 - В личном чате с ботом выполните `/start`, отправьте номер телефона.
